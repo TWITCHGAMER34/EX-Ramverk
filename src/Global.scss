@@ -1,0 +1,85 @@
+@font-face {
+  font-family: 'Sansita One';
+  src: url('./assets/fonts/SansitaOne.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+:root {
+  font-family: 'Sansita One', system-ui, -apple-system;
+}
+
+*{
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+}
+
+
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+
+.page{
+  color: #ffffff;
+  width: 100vw;
+  min-height: 100vh;
+  max-width: 500px;
+  margin: 0 auto;
+  background-color: #231F42;
+  position: relative;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0) + 96px);
+
+}
+
+.hero {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px; /* spacing between image and text */
+  width: 90%;
+  max-width: 360px;
+  box-sizing: border-box;
+  pointer-events: none; /* allows pager taps to pass through if overlapping */
+}
+
+.pagerContainer {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0) + 16px);
+  z-index: 1000;
+  width: 100%;
+  max-width: 360px;
+  padding: 6px 12px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.textContainer {
+  pointer-events: auto;
+  text-align: center;
+
+  .Title{
+    font-size: 2rem;
+    margin-bottom: 0.25em;
+    color: #F56B9A;
+    font-weight: 400;
+  }
+}

@@ -1,0 +1,60 @@
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* CSS variables expected from component */
+}
+
+.list {
+  display: flex;
+  gap: var(--pager-gap, 12px);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  align-items: center;
+}
+
+li {
+  display: inline-block;
+}
+
+
+.dot {
+  position: relative; /* make the ::after hit area align to this element */
+  width: var(--pager-size, 10px);
+  height: var(--pager-size, 10px);
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: var(--pager-inactive, #d8d8da);
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+  box-shadow: none;
+  display: inline-block;
+}
+
+
+.dot:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(21, 156, 228, 0.16);
+  transform: scale(1.15);
+}
+
+.active {
+  background: var(--pager-active, #f56b9a);
+  transform: scale(1.25);
+  box-shadow: 0 6px 14px rgba(31, 23, 48, 0.18);
+}
+
+/* make tappable area slightly larger while keeping dot size */
+.dot::after {
+  content: '';
+  display: block;
+  width: calc(var(--pager-size, 10px) + 16px);
+  height: calc(var(--pager-size, 10px) + 16px);
+  position: absolute;
+  pointer-events: none;
+  border-radius: 999px;
+  transform: translate(-8px, -8px);
+  opacity: 0;
+}
