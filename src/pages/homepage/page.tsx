@@ -15,7 +15,7 @@ export default function HomePage() {
                     </figure>
                     <section className={"textContainer"}>
                         <h1 className={"Title"}>Where It´s @</h1>
-                        <h2 className={styles.fira}>Ticketing made easy</h2>
+                        <h2 className={"fira"}>Ticketing made easy</h2>
                     </section>
                 </header>
                 <section className={"pagerContainer"}>

@@ -1,92 +1,68 @@
-// File: `src/pages/eventspage/page.tsx`
+// typescript
+import {useRef, useState} from 'react';
 import Pager from "../../components/pager/Pager.tsx";
 import Swipeable from "../../components/swipe/Swipeable.tsx";
-import EventCard from "../../components/EventCard/EventCard.tsx";
-import styles from './events.module.scss';
-import { useSwipe } from "../../hooks/useSwipe.ts";
+import {useSwipe} from "../../hooks/useSwipe.ts";
 import useFetchEvents from "../../hooks/useFetchEvents";
-import { AiOutlineSearch, AiOutlineClose } from 'react-icons/ai';
-import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import {useNavigate} from 'react-router-dom';
+import styles from './events.module.scss';
+import SearchInput from './SearchInput';
+import EventsGrid from './EventsGrid';
+import {pickEventsArray, mapRemoteToMapped} from './utils';
 
+/*
+  EventsPage
+  - Fetches events using a generic hook
+  - Normalizes and maps remote event data to the shape used by EventCard
+  - Provides a simple search filter and navigation to event details
+*/
 export default function EventsPage() {
-    const { routes, index } = useSwipe();
+    // swipe / pager state (from app-level hook)
+    const {routes, index} = useSwipe();
     const navigate = useNavigate();
 
-    const [query, setQuery] = useState('');
-    const inputRef = useRef<HTMLInputElement | null>(null);
-    const clearSearch = () => {
-        setQuery('');
-        inputRef.current?.focus();
+    // local UI state: search query and input ref
+    const [searchQuery, setSearchQuery] = useState('');
+    const searchInputRef = useRef<HTMLInputElement | null>(null);    const clearSearch = () => {
+        setSearchQuery('');
+        searchInputRef.current?.focus();
     };
 
-    // fetch (defensive)
-    const fetchResult = useFetchEvents("https://santosnr6.github.io/Data/events.json");
-    const raw = fetchResult as any;
+    // Fetch raw response from hook (shape can vary)
+    const fetchResponse = useFetchEvents("https://santosnr6.github.io/Data/events.json") as unknown;
 
-    // LOG: inspect raw hook response
-    console.log('useFetchEvents raw:', raw);
+    // Defensive conversion so we can read common loading/error keys
+    const responseRecord = (fetchResponse as Record<string, unknown> | undefined) ?? {};
+    const loading = (responseRecord['isLoading'] as boolean | undefined)
+        ?? (responseRecord['loading'] as boolean | undefined)
+        ?? (responseRecord['Loading'] as boolean | undefined)
+        ?? false;
+    const fetchError = (responseRecord['error'] as unknown) ?? (responseRecord['Error'] as unknown) ?? null;
 
-    // Try multiple common shapes and pick the first array we find
-    const candidates = [
-        raw?.events,
-        raw?.data?.events,
-        raw?.data,
-        raw?.items,
-        raw,
-    ];
+    // Extract the actual events array from whatever nested shape the API returned
+    // (utility handles common nested paths and recursive search)
+    const remoteEvents = pickEventsArray(fetchResponse);
 
-    // LOG: inspect candidate locations
-    console.log('useFetchEvents candidates:', candidates);
+    // Map remote events to the local EventMapped shape used by EventCard
+    const eventsMapped = remoteEvents.map(mapRemoteToMapped);
 
-    const eventsArray: any[] = (candidates.find((c: any) => Array.isArray(c)) as any[]) ?? [];
-
-    // LOG: actual array chosen
-    console.log('useFetchEvents eventsArray (length):', eventsArray?.length, eventsArray);
-
-    const isLoading = raw?.isLoading ?? raw?.loading ?? false;
-    const error = raw?.error ?? null;
-
-    // map remote shape -> EventCard props
-    const mapped = eventsArray.map((e: any) => {
-        const dateStr = String(e?.when?.date ?? '').trim(); // e.g. "21 Mars"
-        const parts = dateStr ? dateStr.split(/\s+/) : [];
-        const day = parts[0] ?? '';
-        const month = parts.slice(1).join(' ') ?? '';
-        const time = e?.when ? `${e.when.from ?? ''} - ${e.when.to ?? ''}`.trim() : '';
-        const price = typeof e?.price === 'number'
-            ? (e.price > 0 ? `${e.price} sek` : 'Free')
-            : (e?.price ?? '');
-
-        return {
-            ...e,
-            day,
-            month,
-            title: e?.name ?? 'Untitled',
-            subtitle: e?.where ?? '',
-            time,
-            price,
-        };
-    });
-
-    // LOG: mapped result
-    console.log('useFetchEvents mapped (length):', mapped?.length, mapped);
-
-    // filter mapped list
-    const normalized = query.trim().toLowerCase();
-    const filtered = normalized
-        ? mapped.filter((e: any) =>
-            String(e.title ?? '').toLowerCase().includes(normalized) ||
-            String(e.subtitle ?? '').toLowerCase().includes(normalized)
+    // Simple search: normalize query and filter by title or subtitle
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const visibleEvents = normalizedQuery
+        ? eventsMapped.filter((item) =>
+            String(item.title ?? '').toLowerCase().includes(normalizedQuery) ||
+            String(item.subtitle ?? '').toLowerCase().includes(normalizedQuery)
         )
-        : mapped;
+        : eventsMapped;
 
-    const openEvent = (ev: any) => {
-        if (ev.id) navigate(`/events/${ev.id}`);
+    // Handler: open an event detail route when a card is clicked
+    const handleOpenEvent = (event: typeof eventsMapped[number]) => {
+        if (event.id) navigate(`/events/${event.id}`);
     };
 
     return (
         <Swipeable className={`page ${styles.eventsPage}`}>
+            {/* Page hero / title */}
             <header className={styles.eventsHero}>
                 <section className="textContainer">
                     <h1 className={"Title"}>Events</h1>
@@ -94,52 +70,28 @@ export default function EventsPage() {
             </header>
 
             <main className={"content"}>
+                {/* Search input area */}
                 <section className={styles.search}>
-                    <div className={styles.searchInput}>
-                        <AiOutlineSearch className={styles.searchIcon} />
-                        <input
-                            ref={inputRef}
-                            type="text"
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            placeholder="Search for events..."
-                            aria-label="Search events"
-                        />
-                        {query && (
-                            <button
-                                type="button"
-                                className={styles.searchClear}
-                                onClick={clearSearch}
-                                aria-label="Clear search"
-                            >
-                                <AiOutlineClose />
-                            </button>
-                        )}
-                    </div>
+                    <SearchInput
+                        value={searchQuery}
+                        onChange={setSearchQuery}
+                        onClear={clearSearch}
+                        inputRef={searchInputRef}
+                    />
                 </section>
 
-                <section style={{ padding: '12px 16px' }}>
-                    {isLoading && <div>Loading events…</div>}
-                    {error && <div role="alert">Failed to load events</div>}
-                    {!isLoading && !error && filtered.length === 0 && <div>No events found</div>}
+                {/* Event list / loader / error states */}
+                <section style={{padding: '12px 16px'}}>
+                    {loading && <div>Loading events…</div>}
+                    {fetchError && <div role="alert">Failed to load events</div>}
+                    {!loading && !fetchError && visibleEvents.length === 0 && <div>No events found</div>}
 
-                    <div style={{ display: 'grid', gap: 12, marginTop: 8 }}>
-                        {filtered.map((ev: any) => (
-                            <EventCard
-                                key={ev.id ?? `${ev.title}-${ev.time}`}
-                                day={ev.day ?? ''}
-                                month={ev.month ?? ''}
-                                title={ev.title ?? 'Untitled'}
-                                subtitle={ev.subtitle}
-                                time={ev.time}
-                                price={ev.price}
-                                onClick={() => openEvent(ev)}
-                            />
-                        ))}
-                    </div>
+                    {/* Grid of event cards */}
+                    <EventsGrid events={visibleEvents} onOpen={handleOpenEvent}/>
                 </section>
             </main>
 
+            {/* Pager at bottom (swipe indicator) */}
             <section className={"pagerContainer"}>
                 <Pager count={routes.length} active={index} size={12} gap={16}/>
             </section>

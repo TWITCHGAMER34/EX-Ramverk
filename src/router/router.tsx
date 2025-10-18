@@ -1,3 +1,4 @@
+// File: `src/router/router.tsx`
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { useSwipeStore } from '../state/swipeStore';
@@ -5,8 +6,9 @@ import { useSwipeStore } from '../state/swipeStore';
 //Import pages
 import HomePage from "../pages/homepage/page.tsx";
 import EventsPage from "../pages/eventspage/page.tsx";
+import AddToCart from "../pages/AddToCart/page.tsx";
 
-export default function router () {
+export default function AppRouter() {
     const setRoutes = useSwipeStore((s) => s.setRoutes);
 
     useEffect(() => {
@@ -14,13 +16,13 @@ export default function router () {
         setRoutes(routes);
     }, [setRoutes]);
 
-    return(
+    return (
         <Router>
             <Routes>
                 <Route path="/" element={<HomePage/>} />
                 <Route path="/events" element={<EventsPage/>} />
+                <Route path="/events/:id" element={<AddToCart/>} />
             </Routes>
         </Router>
-    )
-
+    );
 }
