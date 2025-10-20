@@ -1,68 +1,64 @@
-// typescript
-import {useRef, useState} from 'react';
+// File: `src/pages/eventspage/page.tsx`
+import { useRef, useState, useMemo, useCallback } from 'react';
 import Pager from "../../components/pager/Pager.tsx";
-import Swipeable from "../../components/swipe/Swipeable.tsx";
-import {useSwipe} from "../../hooks/useSwipe.ts";
-import useFetchEvents from "../../hooks/useFetchEvents";
-import {useNavigate} from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import styles from './events.module.scss';
 import SearchInput from './SearchInput';
-import EventsGrid from './EventsGrid';
-import {pickEventsArray, mapRemoteToMapped} from './utils';
+import { mapRemoteToMapped } from './utils';
+import { useEvents } from '../../context/EventsContext';
 
-/*
-  EventsPage
-  - Fetches events using a generic hook
-  - Normalizes and maps remote event data to the shape used by EventCard
-  - Provides a simple search filter and navigation to event details
-*/
+// Swiper imports (use named exports from 'swiper' for Vite)
+import { Swiper, SwiperSlide } from 'swiper/react';
+import SwiperCore, { Navigation, Pagination } from 'swiper';
+import Keyboard from 'swiper/modules/keyboard/keyboard';
+import Mousewheel from 'swiper/modules/mousewheel/mousewheel';
+// CSS for core + modules
+import 'swiper/css';
+import 'swiper/css/navigation';
+import 'swiper/css/pagination';
+import 'swiper/modules/keyboard/keyboard.css';
+import 'swiper/modules/mousewheel/mousewheel.css';
+
+SwiperCore.use([Navigation, Pagination, Keyboard, Mousewheel]);
+
+type EventMapped = ReturnType<typeof mapRemoteToMapped>;
+
 export default function EventsPage() {
-    // swipe / pager state (from app-level hook)
-    const {routes, index} = useSwipe();
+    const { routes, index } = useSwipe();
     const navigate = useNavigate();
 
-    // local UI state: search query and input ref
     const [searchQuery, setSearchQuery] = useState('');
-    const searchInputRef = useRef<HTMLInputElement | null>(null);    const clearSearch = () => {
+    const searchInputRef = useRef<HTMLInputElement | null>(null);
+    const clearSearch = () => {
         setSearchQuery('');
         searchInputRef.current?.focus();
     };
 
-    // Fetch raw response from hook (shape can vary)
-    const fetchResponse = useFetchEvents("https://santosnr6.github.io/Data/events.json") as unknown;
+    const { events: ctxEvents, loading, error } = useEvents();
+    const fetchError = error ?? null;
 
-    // Defensive conversion so we can read common loading/error keys
-    const responseRecord = (fetchResponse as Record<string, unknown> | undefined) ?? {};
-    const loading = (responseRecord['isLoading'] as boolean | undefined)
-        ?? (responseRecord['loading'] as boolean | undefined)
-        ?? (responseRecord['Loading'] as boolean | undefined)
-        ?? false;
-    const fetchError = (responseRecord['error'] as unknown) ?? (responseRecord['Error'] as unknown) ?? null;
+    const eventsMapped = useMemo<EventMapped[]>(() => {
+        const remoteEvents = Array.isArray(ctxEvents) ? ctxEvents : [];
+        return remoteEvents.map(mapRemoteToMapped);
+    }, [ctxEvents]);
 
-    // Extract the actual events array from whatever nested shape the API returned
-    // (utility handles common nested paths and recursive search)
-    const remoteEvents = pickEventsArray(fetchResponse);
+    const visibleEvents = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        if (!q) return eventsMapped;
+        return eventsMapped.filter((e) => {
+            const title = String(e.title ?? '').toLowerCase();
+            const location = String(e.location ?? '').toLowerCase();
+            const id = String(e.id ?? '').toLowerCase();
+            return title.includes(q) || location.includes(q) || id.includes(q);
+        });
+    }, [eventsMapped, searchQuery]);
 
-    // Map remote events to the local EventMapped shape used by EventCard
-    const eventsMapped = remoteEvents.map(mapRemoteToMapped);
-
-    // Simple search: normalize query and filter by title or subtitle
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-    const visibleEvents = normalizedQuery
-        ? eventsMapped.filter((item) =>
-            String(item.title ?? '').toLowerCase().includes(normalizedQuery) ||
-            String(item.subtitle ?? '').toLowerCase().includes(normalizedQuery)
-        )
-        : eventsMapped;
-
-    // Handler: open an event detail route when a card is clicked
-    const handleOpenEvent = (event: typeof eventsMapped[number]) => {
+    const handleOpenEvent = useCallback((event: EventMapped) => {
         if (event.id) navigate(`/events/${event.id}`);
-    };
+    }, [navigate]);
 
     return (
-        <Swipeable className={`page ${styles.eventsPage}`}>
-            {/* Page hero / title */}
+        <div className={`page ${styles.eventsPage}`}>
             <header className={styles.eventsHero}>
                 <section className="textContainer">
                     <h1 className={"Title"}>Events</h1>
@@ -70,7 +66,6 @@ export default function EventsPage() {
             </header>
 
             <main className={"content"}>
-                {/* Search input area */}
                 <section className={styles.search}>
                     <SearchInput
                         value={searchQuery}
@@ -80,21 +75,44 @@ export default function EventsPage() {
                     />
                 </section>
 
-                {/* Event list / loader / error states */}
-                <section style={{padding: '12px 16px'}}>
+                <section style={{ padding: '12px 16px' }}>
                     {loading && <div>Loading events…</div>}
                     {fetchError && <div role="alert">Failed to load events</div>}
                     {!loading && !fetchError && visibleEvents.length === 0 && <div>No events found</div>}
 
-                    {/* Grid of event cards */}
-                    <EventsGrid events={visibleEvents} onOpen={handleOpenEvent}/>
+                    {!loading && !fetchError && visibleEvents.length > 0 && (
+                        <Swiper
+                            modules={[Navigation, Pagination, Keyboard, Mousewheel]}
+                            spaceBetween={16}
+                            navigation
+                            pagination={{ clickable: true }}
+                            keyboard={{ enabled: true }}
+                            mousewheel={{ forceToAxis: true }}
+                            breakpoints={{
+                                0: { slidesPerView: 1 },
+                                700: { slidesPerView: 2 },
+                                1000: { slidesPerView: 3 }
+                            }}
+                            style={{ paddingBottom: 24 }}
+                        >
+                            {visibleEvents.map((evt) => (
+                                <SwiperSlide key={String(evt.id ?? evt.title ?? Math.random())}>
+                                    <div className={styles.eventCard} onClick={() => handleOpenEvent(evt)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') handleOpenEvent(evt); }}>
+                                        <h2 className={styles.eventTitle}>{String(evt.title ?? 'Untitled Event')}</h2>
+                                        <p className={styles.eventDate}>Date: {String(evt.date ?? 'TBA')}</p>
+                                        <p className={styles.eventLocation}>Location: {String(evt.location ?? 'TBA')}</p>
+                                        <button className={styles.addToCartButton} onClick={(e) => { e.stopPropagation(); handleOpenEvent(evt); }}>Open</button>
+                                    </div>
+                                </SwiperSlide>
+                            ))}
+                        </Swiper>
+                    )}
                 </section>
             </main>
 
-            {/* Pager at bottom (swipe indicator) */}
             <section className={"pagerContainer"}>
-                <Pager count={routes.length} active={index} size={12} gap={16}/>
+                <Pager count={routes.length} active={index} size={12} gap={16} />
             </section>
-        </Swipeable>
+        </div>
     );
 }

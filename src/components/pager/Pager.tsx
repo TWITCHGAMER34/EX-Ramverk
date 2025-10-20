@@ -26,10 +26,10 @@ export default function Pager({
                                   className,
                                   ariaLabel = 'Pager',
                               }: PagerProps) {
-    const isControlled = active !== undefined;
-    const [internal, setInternal] = useState(() => Math.max(0, Math.min(defaultActive, count - 1)));
-    const current = isControlled ? (active as number) : internal;
-    const dotsRef = useRef<Array<HTMLButtonElement | null>>([]);
+    const isControlled = active !== undefined; // determine if controlled
+    const [internal, setInternal] = useState(() => Math.max(0, Math.min(defaultActive, count - 1))); // clamp initial value
+    const current = isControlled ? (active as number) : internal; // type assertion since active is defined here
+    const dotsRef = useRef<Array<HTMLButtonElement | null>>([]); // refs to dot buttons
 
     useEffect(() => {
         // clamp if count changes
@@ -45,34 +45,18 @@ export default function Pager({
         dotsRef.current[next]?.focus();
     };
 
-    const onKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-            e.preventDefault();
-            select((current + 1) % count);
-        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-            e.preventDefault();
-            select((current - 1 + count) % count);
-        } else if (e.key === 'Home') {
-            e.preventDefault();
-            select(0);
-        } else if (e.key === 'End') {
-            e.preventDefault();
-            select(count - 1);
-        }
-    };
-
-    const cssVars = {
-        ['--pager-size' as any]: `${size}px`,
-        ['--pager-gap' as any]: `${gap}px`,
-        ['--pager-active' as any]: activeColor,
-        ['--pager-inactive' as any]: inactiveColor,
+    // CSS variables for styling
+    const cssVars: React.CSSProperties & Record<`--${string}`, string> = { // Type assertion for CSS variables
+        '--pager-size': `${size}px`, // dot size
+        '--pager-gap': `${gap}px`, // gap between dots
+        '--pager-active': activeColor, // active dot color
+        '--pager-inactive': inactiveColor, // inactive dot color
     };
 
     return (
         <nav
             className={`${styles.pager} ${className ?? ''}`}
             aria-label={ariaLabel}
-            onKeyDown={onKeyDown}
             style={cssVars as React.CSSProperties}
         >
             <ul className={styles.list}>

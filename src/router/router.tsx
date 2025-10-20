@@ -1,7 +1,8 @@
 // File: `src/router/router.tsx`
-import { useEffect } from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import { useSwipeStore } from '../state/swipeStore';
+import {useEffect} from 'react';
+import {BrowserRouter as Router, Route, Routes} from 'react-router-dom';
+//Provider
+import { EventsProvider } from "../context/EventsContext";
 
 //Import pages
 import HomePage from "../pages/homepage/page.tsx";
@@ -9,20 +10,17 @@ import EventsPage from "../pages/eventspage/page.tsx";
 import AddToCart from "../pages/AddToCart/page.tsx";
 
 export default function AppRouter() {
-    const setRoutes = useSwipeStore((s) => s.setRoutes);
-
-    useEffect(() => {
-        const routes = ['/', '/events'];
-        setRoutes(routes);
-    }, [setRoutes]);
+    const url = 'https://santosnr6.github.io/Data/events.json';
 
     return (
-        <Router>
-            <Routes>
-                <Route path="/" element={<HomePage/>} />
-                <Route path="/events" element={<EventsPage/>} />
-                <Route path="/events/:id" element={<AddToCart/>} />
-            </Routes>
-        </Router>
+        <EventsProvider url={url}>
+            <Router>
+                <Routes>
+                    <Route path="/" element={<HomePage/>}/>
+                    <Route path="/events" element={<EventsPage/>}/>
+                    <Route path="/events/:id" element={<AddToCart/>}/>
+                </Routes>
+            </Router>
+        </EventsProvider>
     );
 }
